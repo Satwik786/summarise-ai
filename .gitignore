@@ -1,23 +1,31 @@
+
 # Node
-frontend/node_modules
+frontend/node_modules/
+frontend/dist/
 
 # Python
 backend/venv/
 backend/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
 
-# Environment
+# Environment Variables
 backend/.env
 
 # Uploads
 backend/uploads/
 
-# Vite
-frontend/dist/
-
-# OS
+# OS Files
 .DS_Store
 Thumbs.db
 
 # IDE
 .vscode/
 .idea/
+
+# Logs
+*.log
+
+# Cache
+.pytest_cache/
+.mypy_cache/
