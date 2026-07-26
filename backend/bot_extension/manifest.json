@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "SummaRise Meeting Recorder",
+  "version": "1.0.0",
+  "description": "Captures meeting audio for SummaRise.",
+
+  "permissions": [
+    "tabCapture",
+    "offscreen",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "https://meet.google.com/*"
+  ],
+
+  "action": {
+    "default_title": "Start SummaRise Recording"
+  },
+
+  "background": {
+    "service_worker": "service-worker.js"
+  }
+}
+
+

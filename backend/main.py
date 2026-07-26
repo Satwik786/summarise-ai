@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.meeting import router as meeting_router
 
+from app.routes.bot import router as bot_router
+
 app = FastAPI(title="SummaRise API")
 
 app.add_middleware(
@@ -14,6 +16,8 @@ app.add_middleware(
 )
 
 app.include_router(meeting_router)
+
+app.include_router(bot_router)
 
 
 @app.get("/")

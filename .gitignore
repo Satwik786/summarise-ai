@@ -15,6 +15,11 @@ backend/.env
 # Uploads
 backend/uploads/
 
+# Playwright bot browser profile
+backend/bot_profile/
+
+backend/recordings/
+
 # OS Files
 .DS_Store
 Thumbs.db
