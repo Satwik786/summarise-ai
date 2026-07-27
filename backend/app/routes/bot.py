@@ -19,7 +19,11 @@ router = APIRouter(
 
 # Latest completed bot meeting result.
 # For our current single-user MVP this is enough.
+
 latest_bot_result = None
+
+# Tracks whether the user requested the bot to stop recording
+stop_requested = False
 
 
 class JoinMeetingRequest(BaseModel):
@@ -191,3 +195,49 @@ async def get_bot_result():
         "ready": True,
         **latest_bot_result
     }
+
+
+@router.post("/stop")
+async def stop_bot():
+    global stop_requested
+
+    stop_requested = True
+
+    print("BOT STOP REQUESTED")
+
+    return {
+        "success": True,
+        "message": "Recording stop requested",
+    }
+
+
+@router.get("/stop-status")
+async def get_stop_status():
+    global stop_requested
+
+    if stop_requested:
+        stop_requested = False
+
+        print("RECORDER RECEIVED STOP REQUEST")
+
+        return {
+            "stop": True
+        }
+
+    return {
+        "stop": False
+    }
+
+
+# Reset any old stop request before starting a new recording
+
+@router.post("/reset-stop")
+async def reset_stop():
+    global stop_requested
+
+    stop_requested = False
+
+    return {
+        "success": True
+    }
+

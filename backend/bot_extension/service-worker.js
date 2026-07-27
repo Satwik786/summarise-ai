@@ -67,3 +67,53 @@ chrome.action.onClicked.addListener((tab) => {
 
   console.log("STREAM ID REQUEST SUBMITTED");
 });
+
+
+// External stop command
+
+chrome.runtime.onMessage.addListener(
+  (message, sender, sendResponse) => {
+    if (message.type !== "STOP_BOT_RECORDING") {
+      return;
+    }
+
+    console.log(
+      "STOP BOT RECORDING REQUESTED"
+    );
+
+    chrome.runtime.sendMessage(
+      {
+        type: "STOP_RECORDING",
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "STOP RECORDING ERROR:",
+            chrome.runtime.lastError.message
+          );
+
+          sendResponse({
+            success: false,
+            message:
+              chrome.runtime.lastError.message,
+          });
+
+          return;
+        }
+
+        console.log(
+          "RECORDER STOP RESPONSE:",
+          response
+        );
+
+        sendResponse(
+          response || {
+            success: true,
+          }
+        );
+      }
+    );
+
+    return true;
+  }
+);

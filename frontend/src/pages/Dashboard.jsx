@@ -193,8 +193,40 @@ export default function Dashboard() {
     }
   };
 
+  const stopBot = async () => {
+    try {
+      setBotStatus("Stopping recording...");
 
-  // --------------------------------------------------
+      const response = await api.post(
+        "/bot/stop"
+      );
+
+      console.log(
+        "BOT STOP RESPONSE:",
+        response.data
+      );
+
+      setBotStatus(
+        "Processing meeting..."
+      );
+
+    } catch (error) {
+      console.error(
+        "BOT STOP FAILED:",
+        error
+      );
+
+      setBotStatus("Stop failed");
+
+      alert(
+        error.response?.data?.detail ||
+        "Unable to stop SummaRise bot."
+      );
+    }
+  };
+
+
+  // -------------------------------------------------- onClick={launchBot}
   // Existing manual recorder
   // --------------------------------------------------
 
@@ -307,6 +339,15 @@ export default function Dashboard() {
               >
                 Launch SummaRise Bot
               </Button>
+
+              {botRunning && (
+                <Button
+                  variant="danger"
+                  onClick={stopBot}
+                >
+                  End Meeting
+                </Button>
+              )}
 
 
               <div className="text-sm text-zinc-400">

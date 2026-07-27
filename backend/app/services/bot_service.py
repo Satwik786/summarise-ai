@@ -146,5 +146,113 @@ class BotService:
         "message": "SummaRise bot requested to join the meeting",
     }
 
+    def stop_recording(self):
+        if not self.context:
+            raise RuntimeError("Bot browser is not running")
+
+        if not getattr(self, "extension_id", None):
+            raise RuntimeError("Extension is not loaded")
+
+        print("STOPPING RECORDING THROUGH EXTENSION")
+
+        service_workers = self.context.service_workers
+
+        print(
+            "SERVICE WORKER COUNT:",
+            len(service_workers)
+        )
+
+        matching_workers = []
+
+        for index, worker in enumerate(service_workers):
+            print(
+                f"SERVICE WORKER {index}:",
+                worker.url
+            )
+
+            if (
+                self.extension_id in worker.url
+                and worker.url.endswith(
+                    "/service-worker.js"
+                )
+            ):
+                matching_workers.append(worker)
+
+        print(
+            "MATCHING SUMMARISE WORKERS:",
+            len(matching_workers)
+        )
+
+        if not matching_workers:
+            raise RuntimeError(
+                "SummaRise extension service worker is not available"
+            )
+
+        last_error = None
+
+        for index, worker in enumerate(matching_workers):
+            print(
+                f"TRYING SUMMARISE WORKER {index}"
+            )
+
+            try:
+                result = worker.evaluate(
+                    """
+                    async () => {
+                        return await new Promise(
+                            (resolve, reject) => {
+                                chrome.runtime.sendMessage(
+                                    {
+                                        type: "STOP_RECORDING"
+                                    },
+                                    (response) => {
+                                        if (
+                                            chrome.runtime.lastError
+                                        ) {
+                                            reject(
+                                                new Error(
+                                                    chrome.runtime
+                                                        .lastError
+                                                        .message
+                                                )
+                                            );
+
+                                            return;
+                                        }
+
+                                        resolve(
+                                            response || {
+                                                success: true,
+                                                message:
+                                                    "Recording stop requested"
+                                            }
+                                        );
+                                    }
+                                );
+                            }
+                        );
+                    }
+                    """
+                )
+
+                print(
+                    "STOP RECORDING RESPONSE:",
+                    result
+                )
+
+                return result
+
+            except Exception as error:
+                last_error = error
+
+                print(
+                    f"WORKER {index} FAILED:",
+                    repr(error)
+                )
+
+        raise RuntimeError(
+            "Unable to reach active SummaRise recorder. "
+            f"Last error: {last_error}"
+        )
 
 bot_service = BotService()

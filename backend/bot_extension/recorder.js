@@ -255,6 +255,85 @@ async function uploadRecording() {
 // Make Stop available to recorder-controls.js
 window.stopSummaRiseRecording = stopRecording;
 
-// Automatically start when recorder window ope
+
+// Allow service worker to stop the recorder
+
+chrome.runtime.onMessage.addListener(
+  (message, sender, sendResponse) => {
+    if (message.type !== "STOP_RECORDING") {
+      return;
+    }
+
+    console.log(
+      "STOP_RECORDING MESSAGE RECEIVED"
+    );
+
+    if (
+      !mediaRecorder ||
+      mediaRecorder.state === "inactive"
+    ) {
+      sendResponse({
+        success: false,
+        message: "No active recording",
+      });
+
+      return;
+    }
+
+    stopRecording();
+
+    sendResponse({
+      success: true,
+      message: "Recording stop requested",
+    });
+  }
+);
+
+let stopPollInterval = null;
+
+function startStopPolling() {
+  stopPollInterval = setInterval(
+    async () => {
+      try {
+        if (
+          !mediaRecorder ||
+          mediaRecorder.state !== "recording"
+        ) {
+          return;
+        }
+
+        const response = await fetch(
+          "http://127.0.0.1:8000/bot/stop-status"
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.stop === true) {
+          console.log(
+            "REMOTE STOP REQUEST RECEIVED"
+          );
+
+          clearInterval(stopPollInterval);
+          stopPollInterval = null;
+
+          stopRecording();
+        }
+      } catch (error) {
+        console.error(
+          "STOP POLL ERROR:",
+          error
+        );
+      }
+    },
+    1000
+  );
+}
+
+// Automatically start when recorder window opens
 
 startRecording();
+startStopPolling();
