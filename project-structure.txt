@@ -1,0 +1,80 @@
+summarise-ai/
+│
+├── backend/
+│   ├── app/
+│   │   ├── routes/
+│   │   │   ├── bot.py
+│   │   │   └── meeting.py
+│   │   │
+│   │   └── services/
+│   │       ├── ai_service.py
+│   │       ├── bot_service.py
+│   │       └── speech_service.py
+│   │
+│   ├── bot_extension/
+│   │   ├── manifest.json
+│   │   ├── recorder.html
+│   │   ├── recorder.js
+│   │   └── service-worker.js
+│   │
+│   ├── uploads/
+│   │   └── meeting.webm
+│   │
+│   ├── .env
+│   ├── .env.example
+│   ├── main.py
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   │
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── meeting/
+│   │   │   │   ├── ActionItemsCard.jsx
+│   │   │   │   ├── DiscussionCard.jsx
+│   │   │   │   ├── SummaryCard.jsx
+│   │   │   │   ├── TaskAssignmentsCard.jsx
+│   │   │   │   └── TranscriptCard.jsx
+│   │   │   │
+│   │   │   ├── Button.jsx
+│   │   │   ├── DashboardCard.jsx
+│   │   │   └── Navbar.jsx
+│   │   │
+│   │   ├── hooks/
+│   │   │   ├── useMeetingAnalysis.js
+│   │   │   └── useRecorder.js
+│   │   │
+│   │   ├── pages/
+│   │   │   └── Dashboard.jsx
+│   │   │
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   │
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   │
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   └── vite.config.js
+│
+├── .gitignore
+├── README.md
+├── project-structure.txt
+└── project-tree.txt
+
+
+Historical recording workflow
+
+Saved Meetings
+
+July 28 — 9:12 PM
+July 28 — 8:56 PM
+July 27 — 
+
+and also to play the meeting audio just so that if the transcript is not proper , user can listen to the audio

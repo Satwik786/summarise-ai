@@ -5,20 +5,23 @@ chrome.action.onClicked.addListener((tab) => {
   console.log("ACTIVE TAB:", tab?.url);
   console.log("TAB ID:", tab?.id);
 
-  if (!tab?.id || !tab?.url?.startsWith("https://meet.google.com/")) {
+  if (
+    !tab?.id ||
+    !tab?.url?.startsWith("https://meet.google.com/")
+  ) {
     console.error("Active tab is not Google Meet");
     return;
   }
 
-  console.log("ABOUT TO REQUEST STREAM ID");
+  const meetTabId = tab.id;
+
+  console.log("REQUESTING MEET AUDIO STREAM");
 
   chrome.tabCapture.getMediaStreamId(
     {
-      targetTabId: tab.id,
+      targetTabId: meetTabId,
     },
     (streamId) => {
-      console.log("TAB CAPTURE CALLBACK FIRED");
-
       if (chrome.runtime.lastError) {
         console.error(
           "TAB CAPTURE ERROR:",
@@ -32,88 +35,99 @@ chrome.action.onClicked.addListener((tab) => {
         return;
       }
 
-      console.log("STREAM ID SUCCESS");
-      console.log("STREAM ID:", streamId);
+      console.log("STREAM ID RECEIVED");
 
       const recorderUrl =
         chrome.runtime.getURL("recorder.html") +
         "?streamId=" +
         encodeURIComponent(streamId);
 
-      console.log("OPENING RECORDER WINDOW");
-
       chrome.windows.create(
         {
           url: recorderUrl,
           type: "popup",
-          width: 420,
-          height: 300,
+
+          width: 260,
+          height: 140,
+
+          left: 10,
+          top: 10,
+
+          focused: false,
         },
         (window) => {
           if (chrome.runtime.lastError) {
             console.error(
-              "WINDOW ERROR:",
+              "RECORDER WINDOW ERROR:",
               chrome.runtime.lastError.message
             );
             return;
           }
 
-          console.log("RECORDER WINDOW CREATED");
-          console.log("WINDOW ID:", window?.id);
+          console.log("SUMMARISE RECORDER STARTED");
+          console.log(
+            "RECORDER WINDOW ID:",
+            window?.id
+          );
+
+          // ------------------------------------------
+          // Force recorder popup to compact dimensions
+          // ------------------------------------------
+
+          if (window?.id) {
+            chrome.windows.update(
+              window.id,
+              {
+                state: "normal",
+                width: 260,
+                height: 140,
+                left: 10,
+                top: 10,
+                focused: false,
+              },
+              (updatedWindow) => {
+                if (chrome.runtime.lastError) {
+                  console.error(
+                    "RECORDER WINDOW RESIZE ERROR:",
+                    chrome.runtime.lastError.message
+                  );
+                  return;
+                }
+
+                console.log(
+                  "RECORDER WINDOW SIZE:",
+                  updatedWindow?.width,
+                  "x",
+                  updatedWindow?.height
+                );
+              }
+            );
+          }
+
+          // Mute only the Google Meet tab's speaker output.
+          // The recorder has already received its capture stream ID.
+          chrome.tabs.update(
+            meetTabId,
+            {
+              muted: true,
+            },
+            (updatedTab) => {
+              if (chrome.runtime.lastError) {
+                console.error(
+                  "MEET TAB MUTE ERROR:",
+                  chrome.runtime.lastError.message
+                );
+                return;
+              }
+
+              console.log(
+                "BOT MEET TAB MUTED:",
+                updatedTab?.mutedInfo?.muted
+              );
+            }
+          );
         }
       );
     }
   );
-
-  console.log("STREAM ID REQUEST SUBMITTED");
 });
-
-
-// External stop command
-
-chrome.runtime.onMessage.addListener(
-  (message, sender, sendResponse) => {
-    if (message.type !== "STOP_BOT_RECORDING") {
-      return;
-    }
-
-    console.log(
-      "STOP BOT RECORDING REQUESTED"
-    );
-
-    chrome.runtime.sendMessage(
-      {
-        type: "STOP_RECORDING",
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "STOP RECORDING ERROR:",
-            chrome.runtime.lastError.message
-          );
-
-          sendResponse({
-            success: false,
-            message:
-              chrome.runtime.lastError.message,
-          });
-
-          return;
-        }
-
-        console.log(
-          "RECORDER STOP RESPONSE:",
-          response
-        );
-
-        sendResponse(
-          response || {
-            success: true,
-          }
-        );
-      }
-    );
-
-    return true;
-  }
-);

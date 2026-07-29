@@ -1,61 +1,100 @@
-console.log("SummaRise recorder page loaded");
+console.log("SummaRise recorder loaded");
 
 let mediaRecorder = null;
 let mediaStream = null;
 let recordedChunks = [];
 let audioContext = null;
+let stopPollInterval = null;
 
-// Get stream ID passed by service-worker.
+const statusElement =
+  document.getElementById("status");
 
-const params = new URLSearchParams(window.location.search);
-const streamId = params.get("streamId");
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
 
-console.log("STREAM ID RECEIVED:", streamId);
-// Start recordi
+const streamId =
+  params.get("streamId");
 
+
+function setStatus(message) {
+  if (statusElement) {
+    statusElement.textContent =
+      message;
+  }
+}
+
+// START RECORDING
 async function startRecording() {
   try {
     if (!streamId) {
-      throw new Error("No stream ID received");
+      throw new Error(
+        "No audio stream received"
+      );
     }
 
-    document.getElementById("status").textContent =
-      "Connecting to meeting audio...";
+    setStatus(
+      "Connecting to meeting audio..."
+    );
 
-    console.log("Requesting captured Meet audio");
+    console.log(
+      "REQUESTING CAPTURED MEET AUDIO"
+    );
 
 
     // Capture Google Meet tab audio
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        mandatory: {
-          chromeMediaSource: "tab",
-          chromeMediaSourceId: streamId,
-        },
-      },
-      video: false,
-    });
 
-    console.log("MEET AUDIO STREAM OPENED");
+    mediaStream =
+      await navigator.mediaDevices
+        .getUserMedia({
+          audio: {
+            mandatory: {
+              chromeMediaSource: "tab",
+              chromeMediaSourceId:
+                streamId,
+            },
+          },
+
+          video: false,
+        });
 
 
-    // Keep Meet audio audible through speakers
+    console.log(
+      "MEET AUDIO STREAM OPENED"
+    );
 
-    audioContext = new AudioContext();
+
+    // Keep Meet audio audible
+
+    /* audioContext =
+      new AudioContext();
+
 
     const source =
-      audioContext.createMediaStreamSource(mediaStream);
+      audioContext
+        .createMediaStreamSource(
+          mediaStream
+        );
 
-    source.connect(audioContext.destination);
 
-    console.log("MEET AUDIO CONNECTED TO SPEAKERS");
+    source.connect(
+      audioContext.destination
+    );
 
 
-    // Create MediaRecorder
+    console.log(
+      "MEET AUDIO CONNECTED TO SPEAKERS"
+    ); */
+
+
+    // MediaRecorder
 
     recordedChunks = [];
 
+
     let options = {};
+
 
     if (
       MediaRecorder.isTypeSupported(
@@ -63,101 +102,188 @@ async function startRecording() {
       )
     ) {
       options = {
-        mimeType: "audio/webm;codecs=opus",
+        mimeType:
+          "audio/webm;codecs=opus",
       };
     }
 
-    mediaRecorder = new MediaRecorder(
-      mediaStream,
-      options
+
+    mediaRecorder =
+      new MediaRecorder(
+        mediaStream,
+        options
+      );
+
+
+    mediaRecorder.ondataavailable =
+      (event) => {
+
+        if (
+          event.data &&
+          event.data.size > 0
+        ) {
+          recordedChunks.push(
+            event.data
+          );
+        }
+
+      };
+
+
+    mediaRecorder.onerror =
+      (event) => {
+
+        console.error(
+          "MEDIA RECORDER ERROR:",
+          event
+        );
+
+      };
+
+
+    mediaRecorder.onstop =
+      uploadRecording;
+
+
+    // Generate chunks every second
+
+    mediaRecorder.start(1000);
+
+
+    console.log(
+      "SUMMARISE RECORDING STARTED"
+    );
+
+    try {
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/bot/recording-started",
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Backend rejected recording start"
+        );
+      }
+
+      console.log(
+        "BACKEND NOTIFIED RECORDING STARTED"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "FAILED TO NOTIFY BACKEND:",
+        error
+      );
+
+    }
+
+
+    setStatus(
+      "Recording meeting..."
     );
 
 
-    // Receive audio chunks
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        recordedChunks.push(event.data);
+    // Start checking whether
+    // React requested End Meeting
 
-        console.log(
-          "AUDIO CHUNK:",
-          event.data.size,
-          "bytes"
-        );
-      }
-    };
-
-
-    // Called after recorder fully stops
-    mediaRecorder.onstop = uploadRecording;
-
-
-    mediaRecorder.onerror = (event) => {
-      console.error(
-        "MEDIA RECORDER ERROR:",
-        event
-      );
-    };
-
-
-    // Generate one chunk every second
-    mediaRecorder.start(1000);
-
-    document.getElementById("status").textContent =
-      "Recording meeting audio...";
-
-    console.log("RECORDING STARTED");
+    startStopPolling();
 
   } catch (error) {
+
     console.error(
       "START RECORDING FAILED:",
       error
     );
 
-    document.getElementById("status").textContent =
-      `Recording failed: ${error.message}`;
+
+    setStatus(
+      `Recording failed: ${error.message}`
+    );
+
   }
 }
-// Stop recordi
 
+// STOP RECORDING
 function stopRecording() {
+
   if (
     !mediaRecorder ||
-    mediaRecorder.state === "inactive"
+    mediaRecorder.state ===
+      "inactive"
   ) {
-    console.log("No active recording");
+    console.log(
+      "No active recording"
+    );
+
     return;
   }
 
-  console.log("STOPPING RECORDING");
 
-  document.getElementById("status").textContent =
-    "Processing recording...";
+  console.log(
+    "STOPPING RECORDING"
+  );
+
+
+  setStatus(
+    "Processing meeting..."
+  );
+
+
+  if (stopPollInterval) {
+
+    clearInterval(
+      stopPollInterval
+    );
+
+    stopPollInterval = null;
+
+  }
 
 
   /*
-    Calling stop() causes the final dataavailable event
-    and then triggers mediaRecorder.onstop.
+    IMPORTANT:
+
+    MediaRecorder.stop() must happen
+    before we destroy the stream.
+
+    This produces the final
+    dataavailable event.
   */
+
   mediaRecorder.stop();
 
 
-  // Stop captured audio tracks
-  mediaStream?.getTracks().forEach((track) => {
-    track.stop();
-  });
+  mediaStream
+    ?.getTracks()
+    .forEach((track) => {
+      track.stop();
+    });
 }
-// Upload recording to FastA
 
+// UPLOAD RECORDING
 async function uploadRecording() {
-  try {
-    console.log("Preparing recording for upload");
 
-    const blob = new Blob(
-      recordedChunks,
-      {
-        type: "audio/webm",
-      }
+  try {
+
+    console.log(
+      "PREPARING RECORDING"
     );
+
+
+    const blob =
+      new Blob(
+        recordedChunks,
+        {
+          type:
+            "audio/webm",
+        }
+      );
+
 
     console.log(
       "FINAL RECORDING SIZE:",
@@ -167,18 +293,22 @@ async function uploadRecording() {
 
 
     if (blob.size === 0) {
+
       throw new Error(
         "Recording is empty"
       );
+
     }
 
 
-    document.getElementById("status").textContent =
-      "Uploading recording...";
+    setStatus(
+      "Generating meeting insights..."
+    );
 
 
-    // Create multipart/form-data request
-    const formData = new FormData();
+    const formData =
+      new FormData();
+
 
     formData.append(
       "file",
@@ -188,152 +318,173 @@ async function uploadRecording() {
 
 
     console.log(
-      "Uploading recording to FastAPI"
+      "UPLOADING TO SUMMARISE API"
     );
 
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/bot/recording",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+    const response =
+      await fetch(
+        "http://127.0.0.1:8000/bot/recording",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
 
     if (!response.ok) {
-      const errorText = await response.text();
+
+      const errorText =
+        await response.text();
+
 
       throw new Error(
         `Upload failed (${response.status}): ${errorText}`
       );
+
     }
 
 
-    const result = await response.json();
+    const result =
+      await response.json();
+
 
     console.log(
-      "RECORDING UPLOAD SUCCESS:",
+      "MEETING PROCESSING COMPLETE:",
       result
     );
 
 
-    document.getElementById("status").textContent =
-      `Recording saved: ${result.filename}`;
+    setStatus(
+      "Meeting processed successfully"
+    );
+
+
+    /*
+      Give the user a moment to see
+      completion and then close the
+      recorder automatically.
+    */
+
+    setTimeout(
+      () => {
+        window.close();
+      },
+      1500
+    );
 
 
   } catch (error) {
+
     console.error(
       "RECORDING UPLOAD FAILED:",
       error
     );
 
-    document.getElementById("status").textContent =
-      `Upload failed: ${error.message}`;
+
+    setStatus(
+      "Unable to process meeting"
+    );
 
   } finally {
+
     recordedChunks = [];
+
     mediaRecorder = null;
     mediaStream = null;
 
+
     if (audioContext) {
+
       try {
+
         await audioContext.close();
+
       } catch (error) {
+
         console.error(
           "AUDIO CONTEXT CLOSE ERROR:",
           error
         );
+
       }
+
 
       audioContext = null;
     }
+
   }
 }
 
+// POLL BACKEND FOR END MEETING
+function startStopPolling() {
 
-// Make Stop available to recorder-controls.js
-window.stopSummaRiseRecording = stopRecording;
+  if (stopPollInterval) {
 
-
-// Allow service worker to stop the recorder
-
-chrome.runtime.onMessage.addListener(
-  (message, sender, sendResponse) => {
-    if (message.type !== "STOP_RECORDING") {
-      return;
-    }
-
-    console.log(
-      "STOP_RECORDING MESSAGE RECEIVED"
+    clearInterval(
+      stopPollInterval
     );
 
-    if (
-      !mediaRecorder ||
-      mediaRecorder.state === "inactive"
-    ) {
-      sendResponse({
-        success: false,
-        message: "No active recording",
-      });
-
-      return;
-    }
-
-    stopRecording();
-
-    sendResponse({
-      success: true,
-      message: "Recording stop requested",
-    });
   }
-);
 
-let stopPollInterval = null;
 
-function startStopPolling() {
-  stopPollInterval = setInterval(
-    async () => {
-      try {
-        if (
-          !mediaRecorder ||
-          mediaRecorder.state !== "recording"
-        ) {
-          return;
-        }
+  stopPollInterval =
+    setInterval(
+      async () => {
 
-        const response = await fetch(
-          "http://127.0.0.1:8000/bot/stop-status"
-        );
+        try {
 
-        if (!response.ok) {
-          return;
-        }
+          if (
+            !mediaRecorder ||
+            mediaRecorder.state !==
+              "recording"
+          ) {
+            return;
+          }
 
-        const data = await response.json();
 
-        if (data.stop === true) {
-          console.log(
-            "REMOTE STOP REQUEST RECEIVED"
+          const response =
+            await fetch(
+              "http://127.0.0.1:8000/bot/stop-status"
+            );
+
+
+          if (!response.ok) {
+            return;
+          }
+
+
+          const data =
+            await response.json();
+
+
+          if (
+            data.stop === true
+          ) {
+
+            console.log(
+              "REMOTE END MEETING RECEIVED"
+            );
+
+
+            stopRecording();
+
+          }
+
+        } catch (error) {
+
+          console.error(
+            "STOP POLL ERROR:",
+            error
           );
 
-          clearInterval(stopPollInterval);
-          stopPollInterval = null;
-
-          stopRecording();
         }
-      } catch (error) {
-        console.error(
-          "STOP POLL ERROR:",
-          error
-        );
-      }
-    },
-    1000
-  );
+
+      },
+
+      1000
+    );
 }
 
-// Automatically start when recorder window opens
-
+// START
 startRecording();
-startStopPolling();

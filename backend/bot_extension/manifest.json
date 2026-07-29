@@ -2,12 +2,12 @@
   "manifest_version": 3,
   "name": "SummaRise Meeting Recorder",
   "version": "1.0.0",
-  "description": "Captures meeting audio for SummaRise.",
+  "description": "Captures Google Meet audio for SummaRise.",
 
   "permissions": [
     "tabCapture",
-    "offscreen",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
 
   "host_permissions": [
@@ -23,5 +23,3 @@
     "service_worker": "service-worker.js"
   }
 }
-
-

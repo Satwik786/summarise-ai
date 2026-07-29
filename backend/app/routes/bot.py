@@ -17,14 +17,14 @@ router = APIRouter(
 )
 
 
-# Latest completed bot meeting result.
-# For our current single-user MVP this is enough.
+# In-memory MVP state
 
 latest_bot_result = None
-
-# Tracks whether the user requested the bot to stop recording
 stop_requested = False
+recording_started = False
 
+
+# Request models
 
 class JoinMeetingRequest(BaseModel):
     meeting_url: str
@@ -35,10 +35,13 @@ class JoinMeetingRequest(BaseModel):
 @router.post("/join")
 async def join_meeting(request: JoinMeetingRequest):
     global latest_bot_result
+    global stop_requested
+    global recording_started
 
     try:
-        # Clear the previous meeting result
+        # Clear state from previous meeting
         latest_bot_result = None
+        stop_requested = False
 
         result = await asyncio.to_thread(
             bot_service.open_meeting,
@@ -54,21 +57,42 @@ async def join_meeting(request: JoinMeetingRequest):
         )
 
     except Exception as error:
-        print("BOT ERROR:", repr(error))
+        print(
+            "BOT ERROR:",
+            repr(error)
+        )
 
         raise HTTPException(
             status_code=500,
             detail="Unable to open Google Meet"
         )
 
+# Recorder notifies backend that recording has started
 
-# Receive bot recording
+@router.post("/recording-started")
+async def recording_started_endpoint():
+    global recording_started
+
+    recording_started = True
+
+    print(
+        "RECORDING STARTED"
+    )
+
+    return {
+        "success": True
+    }
+
+# Receive and process bot recording
 
 @router.post("/recording")
 async def save_bot_recording(
     file: UploadFile = File(...)
 ):
     global latest_bot_result
+    global recording_started
+
+    print("AI ANALYSIS COMPLETE")
 
     try:
         # 1. Save recording
@@ -80,7 +104,7 @@ async def save_bot_recording(
 
         recordings_dir.mkdir(
             parents=True,
-            exist_ok=True,
+            exist_ok=True
         )
 
         timestamp = datetime.now().strftime(
@@ -97,7 +121,11 @@ async def save_bot_recording(
         with open(file_path, "wb") as recording:
             recording.write(contents)
 
-        print("BOT RECORDING SAVED:", file_path)
+        print(
+            "BOT RECORDING SAVED:",
+            file_path
+        )
+
         print(
             "RECORDING SIZE:",
             len(contents),
@@ -105,7 +133,7 @@ async def save_bot_recording(
         )
 
 
-        # 2. Whisper
+        # 2. Whisper transcription
 
         print("STARTING TRANSCRIPTION")
 
@@ -115,10 +143,14 @@ async def save_bot_recording(
         )
 
         print("TRANSCRIPTION COMPLETE")
-        print("TRANSCRIPT:", transcript)
+
+        print(
+            "TRANSCRIPT:",
+            transcript
+        )
 
 
-        # 3. Gemini
+        # 3. Gemini analysis
 
         print("STARTING AI ANALYSIS")
 
@@ -130,7 +162,7 @@ async def save_bot_recording(
         print("AI ANALYSIS COMPLETE")
 
 
-        # 4. Build result
+        # 4. Build frontend result
 
         latest_bot_result = {
             "success": True,
@@ -161,10 +193,18 @@ async def save_bot_recording(
             ),
         }
 
+         # 5. Close completed bot session
 
-        # Extension still receives the result
+        print(
+            "MEETING PROCESSING COMPLETE"
+        )
+
+        await asyncio.to_thread(
+            bot_service.close_bot
+        )
+
+
         return latest_bot_result
-
 
     except Exception as error:
         import traceback
@@ -178,11 +218,11 @@ async def save_bot_recording(
 
         raise HTTPException(
             status_code=500,
-            detail=str(error),
+            detail=str(error)
         )
 
 
-# React checks this endpoint for completed results
+# Frontend polls for completed result
 
 @router.get("/result")
 async def get_bot_result():
@@ -197,9 +237,31 @@ async def get_bot_result():
     }
 
 
+# Frontend requests recording stop
+
 @router.post("/stop")
 async def stop_bot():
     global stop_requested
+    global recording_started
+
+    # No recorder was ever started
+    if not recording_started:
+
+        print(
+            "STOP REQUESTED BEFORE RECORDING STARTED"
+        )
+
+        await asyncio.to_thread(
+            bot_service.close_bot
+        )
+
+        recording_started = False
+        stop_requested = False
+
+        raise HTTPException(
+            status_code=400,
+            detail="Recording was never started."
+        )
 
     stop_requested = True
 
@@ -207,9 +269,11 @@ async def stop_bot():
 
     return {
         "success": True,
-        "message": "Recording stop requested",
+        "message": "Recording stop requested"
     }
 
+
+# Recorder polls for stop request
 
 @router.get("/stop-status")
 async def get_stop_status():
@@ -218,7 +282,9 @@ async def get_stop_status():
     if stop_requested:
         stop_requested = False
 
-        print("RECORDER RECEIVED STOP REQUEST")
+        print(
+            "RECORDER RECEIVED STOP REQUEST"
+        )
 
         return {
             "stop": True
@@ -229,7 +295,7 @@ async def get_stop_status():
     }
 
 
-# Reset any old stop request before starting a new recording
+# Reset stop state
 
 @router.post("/reset-stop")
 async def reset_stop():
@@ -240,4 +306,3 @@ async def reset_stop():
     return {
         "success": True
     }
-
