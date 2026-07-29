@@ -12,9 +12,7 @@ export default function useMeetingAnalysis() {
   const [taskAssignments, setTaskAssignments] = useState([]);
 
 
-  // ---------------------------------------------
   // Apply analysis data to dashboard
-  // ---------------------------------------------
 
   const applyAnalysisResult = (data) => {
     setTranscript(data.transcript || "");
@@ -25,9 +23,7 @@ export default function useMeetingAnalysis() {
   };
 
 
-  // ---------------------------------------------
   // Existing manual recording flow
-  // ---------------------------------------------
 
   const analyzeMeeting = async (audioBlob) => {
     setLoading(true);
@@ -79,9 +75,7 @@ export default function useMeetingAnalysis() {
   };
 
 
-  // ---------------------------------------------
   // Apply completed bot result
-  // ---------------------------------------------
 
   const applyBotResult = (data) => {
     applyAnalysisResult(data);
@@ -89,9 +83,7 @@ export default function useMeetingAnalysis() {
   };
 
 
-  // ---------------------------------------------
   // Check whether bot result is ready
-  // ---------------------------------------------
 
   const getBotResult = async () => {
     const response = await api.get(
@@ -110,9 +102,49 @@ export default function useMeetingAnalysis() {
   };
 
 
-  // ---------------------------------------------
+  // Get saved bot recordings
+
+  const getSavedRecordings = async () => {
+    const response = await api.get(
+      "/bot/recordings"
+    );
+
+    return response.data.recordings || [];
+  };
+
+
+  // Analyze a saved bot recording
+
+  const analyzeSavedRecording = async (filename) => {
+    setLoading(true);
+
+    try {
+      setLoadingStage(
+        "Analyzing saved recording..."
+      );
+
+      const response = await api.post(
+        "/bot/recordings/analyze",
+        {
+          filename,
+        }
+      );
+
+      const data = response.data;
+
+      applyAnalysisResult(data);
+
+      setLoadingStage("Completed");
+
+      return data;
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   // Retry Gemini analysis
-  // ---------------------------------------------
 
   const retryAnalysis = async () => {
     if (!transcript) return;
@@ -165,5 +197,8 @@ export default function useMeetingAnalysis() {
 
     getBotResult,
     applyBotResult,
+
+    getSavedRecordings,
+    analyzeSavedRecording,
   };
 }

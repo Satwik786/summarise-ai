@@ -1,19 +1,30 @@
 export default function DiscussionCard({ points = [] }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <h2 className="mb-4 text-xl font-semibold">
+    <div className="h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="mb-5 text-lg font-semibold text-slate-900">
         Discussion Points
       </h2>
 
-      <ul className="space-y-3 list-disc list-inside text-zinc-300">
-        {points.length ? (
-          points.map((point, index) => (
-            <li key={index}>{point}</li>
-          ))
-        ) : (
-          <li>No discussion points.</li>
-        )}
-      </ul>
+      {points.length ? (
+        <ul className="space-y-3">
+          {points.map((point, index) => (
+            <li
+              key={index}
+              className="flex items-start gap-3 text-sm leading-6 text-slate-600"
+            >
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
+
+              <span>
+                {point}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500">
+          No discussion points.
+        </p>
+      )}
     </div>
   );
 }

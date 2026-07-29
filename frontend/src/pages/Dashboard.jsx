@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Navbar from "../components/Navbar";
 import DashboardCard from "../components/DashboardCard";
@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [status, setStatus] = useState("Ready");
   const [seconds, setSeconds] = useState(0);
 
+
   const [recordingSource, setRecordingSource] =
     useState("microphone");
 
@@ -26,6 +27,16 @@ export default function Dashboard() {
   const [meetingUrl, setMeetingUrl] = useState("");
   const [botStatus, setBotStatus] = useState("Ready");
   const [botRunning, setBotRunning] = useState(false);
+
+  // Saved recordings state
+  const [savedRecordings, setSavedRecordings] = useState([]);
+  const [selectedRecording, setSelectedRecording] = useState("");
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
+
+  const [recordingsDropdownOpen, setRecordingsDropdownOpen] =
+  useState(false);
+
+  const recordingsDropdownRef = useRef(null);
 
   const recorder = useRecorder();
 
@@ -42,6 +53,9 @@ export default function Dashboard() {
     analyzeMeeting,
     retryAnalysis,
     getBotResult,
+
+    getSavedRecordings,
+    analyzeSavedRecording,
   } = useMeetingAnalysis();
 
 
@@ -53,10 +67,8 @@ export default function Dashboard() {
     taskAssignments.length > 0;
 
 
-  // --------------------------------------------------
-  // Existing recording timer
-  // --------------------------------------------------
-
+    // Existing recording timer
+  
   useEffect(() => {
     let interval;
 
@@ -70,10 +82,8 @@ export default function Dashboard() {
   }, [status]);
 
 
-  // --------------------------------------------------
-  // Poll bot result
-  // --------------------------------------------------
-
+    // Poll bot result
+  
   useEffect(() => {
     if (!botRunning) {
       return;
@@ -105,10 +115,60 @@ export default function Dashboard() {
   }, [botRunning]);
 
 
-  // --------------------------------------------------
-  // Format timer
-  // --------------------------------------------------
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (
+      recordingsDropdownRef.current &&
+      !recordingsDropdownRef.current.contains(
+        event.target
+      )
+    ) {
+      setRecordingsDropdownOpen(false);
+    }
+  };
 
+  document.addEventListener(
+    "mousedown",
+    handleClickOutside
+  );
+
+  return () => {
+    document.removeEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+  };
+}, []);
+
+  // Load saved recordings
+
+useEffect(() => {
+  const loadSavedRecordings = async () => {
+    try {
+      setRecordingsLoading(true);
+
+      const recordings =
+        await getSavedRecordings();
+
+      setSavedRecordings(recordings);
+
+    } catch (error) {
+      console.error(
+        "FAILED TO LOAD SAVED RECORDINGS:",
+        error
+      );
+
+    } finally {
+      setRecordingsLoading(false);
+    }
+  };
+
+  loadSavedRecordings();
+}, []);
+
+
+    // Format timer
+  
   const formatTime = () => {
     const hrs = String(
       Math.floor(seconds / 3600)
@@ -126,10 +186,8 @@ export default function Dashboard() {
   };
 
 
-  // --------------------------------------------------
-  // Launch AI bot
-  // --------------------------------------------------
-
+    // Launch AI bot
+  
   const launchBot = async () => {
     const url = meetingUrl.trim();
 
@@ -226,9 +284,31 @@ export default function Dashboard() {
   };
 
 
-  // -------------------------------------------------- onClick={launchBot}
-  // Existing manual recorder
-  // --------------------------------------------------
+// Analyze saved recording
+
+const handleAnalyzeSavedRecording = async () => {
+  if (!selectedRecording) {
+    alert("Select a saved recording.");
+    return;
+  }
+
+  try {
+    await analyzeSavedRecording(
+      selectedRecording
+    );
+
+  } catch (error) {
+    console.error(
+      "SAVED RECORDING ANALYSIS FAILED:",
+      error
+    );
+
+    alert(
+      error.response?.data?.detail ||
+      "Unable to analyze saved recording."
+    );
+  }
+};
 
   const startRecording = async () => {
     try {
@@ -283,85 +363,195 @@ export default function Dashboard() {
     }
   };
 
+  const handleMouseMove = (event) => {
+    const x =
+      (event.clientX / window.innerWidth) * 100;
+
+    const y =
+      (event.clientY / window.innerHeight) * 100;
+
+    setMousePosition({
+      x,
+      y,
+    });
+  };
+
 
   return (
-    <>
-      <Navbar status={status} />
+    <div className="relative min-h-screen overflow-x-hidden bg-slate-50">
 
-      <main className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
+      {/* Background brand wordmark */}
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          fixed
+          inset-0
+          z-0
+          flex
+          select-none
+          items-center
+          justify-center
+          overflow-hidden
+        "
+      >
+        <div
+          className="
+            whitespace-nowrap
+            text-[9rem]
+            font-bold
+            tracking-[-0.06em]
+            sm:text-[12rem]
+            lg:text-[16rem]
+            xl:text-[18rem]
+          "
+
+        >
+          <span
+            className="
+              bg-gradient-to-r
+              from-emerald-200
+              via-cyan-500
+              to-blue-600
+              bg-clip-text
+              text-transparent
+              opacity-29
+            "
+          >
+            Summa
+          </span>
+
+          <span
+            className="
+              bg-gradient-to-r
+              from-violet-600
+              via-fuchsia-500
+              to-orange-400
+              bg-clip-text
+              text-transparent
+              opacity-35
+            "
+          >
+            Rise
+          </span>
+        </div>
+      </div>
+
+      <div className="relative z-10">
+        <Navbar status={status} />
+
+        <main className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
+
+        <div className="mb-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+            Turn meetings into actionable insights
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-base leading-7 text-slate-500">
+            Record, transcribe, and organize meeting outcomes in one place.
+          </p>
+        </div>
 
         {/* ==========================================
             AI MEETING BOT
         ========================================== */}
 
-        <DashboardCard title="SummaRise AI Meeting Bot">
+        <DashboardCard title="Start a New Meeting">
           <div className="space-y-5">
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-300">
+              <p className="mb-5 text-sm leading-6 text-slate-500">
+                Paste a Google Meet link and SummaRise will join the
+                meeting, record the conversation, and generate meeting
+                insights when it ends.
+              </p>
+
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Google Meet URL
               </label>
 
-              <input
-                type="url"
-                value={meetingUrl}
-                onChange={(event) =>
-                  setMeetingUrl(event.target.value)
-                }
-                placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                disabled={botRunning}
-                className="
-                  w-full
-                  rounded-lg
-                  border
-                  border-zinc-700
-                  bg-zinc-900
-                  px-4
-                  py-3
-                  text-zinc-100
-                  outline-none
-                  transition
-                  placeholder:text-zinc-600
-                  focus:border-blue-500
-                "
-              />
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="url"
+                  value={meetingUrl}
+                  onChange={(event) =>
+                    setMeetingUrl(event.target.value)
+                  }
+                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  disabled={botRunning}
+                  className="
+                    min-w-0
+                    flex-1
+                    rounded-lg
+                    border
+                    border-slate-300
+                    bg-white
+                    px-4
+                    py-2.5
+                    text-sm
+                    text-slate-900
+                    outline-none
+                    transition
+                    placeholder:text-slate-400
+                    hover:border-slate-400
+                    focus:border-indigo-500
+                    focus:ring-2
+                    focus:ring-indigo-100
+                    disabled:cursor-not-allowed
+                    disabled:bg-slate-50
+                    disabled:text-slate-500
+                  "
+                />
+
+                {!botRunning ? (
+                  <Button
+                    onClick={launchBot}
+                    disabled={!meetingUrl.trim()}
+                  >
+                    Launch Bot
+                  </Button>
+                ) : (
+                  <Button
+                    variant="danger"
+                    onClick={stopBot}
+                  >
+                    End Meeting
+                  </Button>
+                )}
+              </div>
             </div>
 
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
 
-              <Button
-                onClick={launchBot}
-                disabled={
-                  botRunning ||
-                  !meetingUrl.trim()
-                }
-              >
-                Launch SummaRise Bot
-              </Button>
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    botStatus === "Completed"
+                      ? "bg-emerald-500"
+                      : botStatus === "Launch failed" ||
+                        botStatus === "Stop failed"
+                      ? "bg-red-500"
+                      : botRunning
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                  }`}
+                />
 
-              {botRunning && (
-                <Button
-                  variant="danger"
-                  onClick={stopBot}
-                >
-                  End Meeting
-                </Button>
-              )}
-
-
-              <div className="text-sm text-zinc-400">
-                Bot Status:
+                <span className="text-sm text-slate-500">
+                  Bot Status:
+                </span>
 
                 <span
-                  className={`ml-2 font-semibold ${
+                  className={`text-sm font-medium ${
                     botStatus === "Completed"
-                      ? "text-emerald-400"
-                      : botStatus === "Launch failed"
-                      ? "text-red-400"
+                      ? "text-emerald-700"
+                      : botStatus === "Launch failed" ||
+                        botStatus === "Stop failed"
+                      ? "text-red-700"
                       : botRunning
-                      ? "text-amber-400"
-                      : "text-zinc-300"
+                      ? "text-amber-700"
+                      : "text-slate-700"
                   }`}
                 >
                   {botStatus}
@@ -372,15 +562,276 @@ export default function Dashboard() {
 
 
             {botRunning && (
-              <p className="text-sm text-zinc-500">
-                SummaRise is waiting for the meeting
-                recording to finish. Results will appear
-                automatically after transcription and AI
-                analysis complete.
-              </p>
+              <div className="rounded-lg bg-slate-50 px-4 py-3">
+                <p className="text-sm leading-6 text-slate-600">
+                  SummaRise is waiting for the meeting to finish.
+                  Results will appear automatically after transcription
+                  and analysis are complete.
+                </p>
+              </div>
             )}
 
           </div>
+        </DashboardCard>
+
+        {/* ==========================================
+            SAVED RECORDINGS
+        ========================================== */}
+
+        <DashboardCard title="Saved Recordings">
+
+          <div className="space-y-4">
+
+            <p className="text-sm leading-6 text-slate-500">
+              Re-analyze a previously recorded SummaRise
+              meeting.
+            </p>
+
+
+            {recordingsLoading ? (
+
+              <p className="text-sm text-slate-500">
+                Loading saved recordings...
+              </p>
+
+            ) : savedRecordings.length === 0 ? (
+
+              <p className="text-sm text-slate-500">
+                No saved recordings available.
+              </p>
+
+            ) : (
+
+              <>
+
+                <div
+                  ref={recordingsDropdownRef}
+                  className="relative"
+                >
+
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Select Recording
+                  </label>
+
+
+                  {/* Dropdown button */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRecordingsDropdownOpen(
+                        (previous) => !previous
+                      )
+                    }
+                    disabled={loading}
+                    className="
+                      flex
+                      w-full
+                      items-center
+                      justify-between
+                      gap-4
+                      rounded-lg
+                      border
+                      border-slate-300
+                      bg-white
+                      px-4
+                      py-3
+                      text-left
+                      text-sm
+                      text-slate-700
+                      outline-none
+                      transition
+                      hover:border-slate-400
+                      focus:border-indigo-500
+                      focus:ring-2
+                      focus:ring-indigo-100
+                      disabled:cursor-not-allowed
+                      disabled:bg-slate-50
+                      disabled:opacity-60
+                    "
+                  >
+
+                    <span className="min-w-0 flex-1 truncate">
+
+                      {selectedRecording
+                        ? (() => {
+                            const recording =
+                              savedRecordings.find(
+                                (item) =>
+                                  item.filename ===
+                                  selectedRecording
+                              );
+
+                            if (!recording) {
+                              return "Choose a recording...";
+                            }
+
+                            return `${new Date(
+                              recording.created_at
+                            ).toLocaleString()} — ${(
+                              recording.size / 1024
+                            ).toFixed(1)} KB`;
+                          })()
+                        : "Choose a recording..."}
+
+                    </span>
+
+
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${
+                        recordingsDropdownOpen
+                          ? "rotate-180"
+                          : ""
+                      }`}
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+
+                  </button>
+
+
+                  {/* Dropdown menu */}
+
+                  {recordingsDropdownOpen && (
+
+                    <div
+                      className="
+                        absolute
+                        left-0
+                        right-0
+                        top-full
+                        z-50
+                        mt-2
+                        max-h-72
+                        overflow-y-auto
+                        rounded-lg
+                        border
+                        border-slate-200
+                        bg-white
+                        p-1
+                        shadow-lg
+                      "
+                    >
+
+                      {savedRecordings.map(
+                        (recording) => {
+
+                          const isSelected =
+                            selectedRecording ===
+                            recording.filename;
+
+                          return (
+
+                            <button
+                              type="button"
+                              key={recording.filename}
+                              onClick={() => {
+                                setSelectedRecording(
+                                  recording.filename
+                                );
+
+                                setRecordingsDropdownOpen(
+                                  false
+                                );
+                              }}
+                              className={`
+                                flex
+                                w-full
+                                items-center
+                                justify-between
+                                gap-4
+                                rounded-md
+                                px-3
+                                py-3
+                                text-left
+                                transition-colors
+                                ${
+                                  isSelected
+                                    ? "bg-indigo-50 text-indigo-700"
+                                    : "text-slate-700 hover:bg-slate-50"
+                                }
+                              `}
+                            >
+
+                              <span className="truncate text-sm">
+                                {new Date(
+                                  recording.created_at
+                                ).toLocaleString()}
+                              </span>
+
+
+                              <span
+                                className={`shrink-0 text-xs ${
+                                  isSelected
+                                    ? "text-indigo-500"
+                                    : "text-slate-400"
+                                }`}
+                              >
+                                {(
+                                  recording.size / 1024
+                                ).toFixed(1)}
+                                {" KB"}
+                              </span>
+
+                            </button>
+
+                          );
+                        }
+                      )}
+
+                    </div>
+
+                  )}
+
+                </div>
+
+
+                <div className="flex flex-wrap items-center gap-4">
+
+                  <Button
+                    variant="secondary"
+                    onClick={
+                      handleAnalyzeSavedRecording
+                    }
+                    disabled={
+                      !selectedRecording ||
+                      loading
+                    }
+                  >
+                    {loading &&
+                    loadingStage ===
+                      "Analyzing saved recording..."
+                      ? "Analyzing..."
+                      : "Analyze Recording"}
+                  </Button>
+
+
+                  {loading &&
+                    loadingStage ===
+                      "Analyzing saved recording..." && (
+
+                      <span className="text-sm text-amber-600">
+                        Transcribing and generating
+                        meeting insights...
+                      </span>
+
+                    )}
+
+                </div>
+
+              </>
+
+            )}
+
+          </div>
+
         </DashboardCard>
 
 
@@ -390,146 +841,198 @@ export default function Dashboard() {
 
         <div className="grid gap-6 lg:grid-cols-2">
 
+
           <DashboardCard title="Manual Recording">
 
-            <div className="mb-6">
+            <div className="space-y-6">
 
-              <label className="mb-2 block text-sm font-medium text-zinc-300">
-                Recording Source
-              </label>
+              <div>
+
+                <p className="mb-5 text-sm leading-6 text-slate-500">
+                  Record a meeting directly from your microphone
+                  or browser tab.
+                </p>
 
 
-              <div className="flex gap-6">
-
-                <label className="flex cursor-pointer items-center gap-2">
-
-                  <input
-                    type="radio"
-                    name="recording-source"
-                    value="microphone"
-                    checked={
-                      recordingSource ===
-                      "microphone"
-                    }
-                    onChange={(event) =>
-                      setRecordingSource(
-                        event.target.value
-                      )
-                    }
-                    disabled={
-                      status === "Recording" ||
-                      loading
-                    }
-                  />
-
-                  <span>Microphone</span>
-
+                <label className="mb-3 block text-sm font-medium text-slate-700">
+                  Recording Source
                 </label>
 
 
-                <label className="flex cursor-pointer items-center gap-2">
+                <div className="flex flex-wrap gap-x-6 gap-y-3">
 
-                  <input
-                    type="radio"
-                    name="recording-source"
-                    value="tab"
-                    checked={
-                      recordingSource === "tab"
-                    }
-                    onChange={(event) =>
-                      setRecordingSource(
-                        event.target.value
-                      )
-                    }
-                    disabled={
-                      status === "Recording" ||
-                      loading
-                    }
-                  />
+                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
 
-                  <span>Browser Tab</span>
+                    <input
+                      type="radio"
+                      name="recording-source"
+                      value="microphone"
+                      checked={
+                        recordingSource ===
+                        "microphone"
+                      }
+                      onChange={(event) =>
+                        setRecordingSource(
+                          event.target.value
+                        )
+                      }
+                      disabled={
+                        status === "Recording" ||
+                        loading
+                      }
+                      className="
+                        h-4
+                        w-4
+                        cursor-pointer
+                        accent-indigo-600
+                        disabled:cursor-not-allowed
+                      "
+                    />
 
-                </label>
+                    <span>
+                      Microphone
+                    </span>
+
+                  </label>
+
+
+                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
+
+                    <input
+                      type="radio"
+                      name="recording-source"
+                      value="tab"
+                      checked={
+                        recordingSource === "tab"
+                      }
+                      onChange={(event) =>
+                        setRecordingSource(
+                          event.target.value
+                        )
+                      }
+                      disabled={
+                        status === "Recording" ||
+                        loading
+                      }
+                      className="
+                        h-4
+                        w-4
+                        cursor-pointer
+                        accent-indigo-600
+                        disabled:cursor-not-allowed
+                      "
+                    />
+
+                    <span>
+                      Browser Tab
+                    </span>
+
+                  </label>
+
+                </div>
+
+
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  Browser Tab is recommended for Google Meet,
+                  Zoom, Microsoft Teams and YouTube.
+                </p>
 
               </div>
 
 
-              <p className="mt-3 text-xs text-zinc-500">
-                Browser Tab is recommended for
-                Google Meet, Zoom, Microsoft Teams
-                and YouTube.
-              </p>
+              <div className="flex flex-wrap gap-3">
 
-            </div>
-
-
-            <div className="flex gap-4">
-
-              <Button
-                onClick={startRecording}
-                disabled={
-                  status === "Recording" ||
-                  loading
-                }
-              >
-                Start Recording
-              </Button>
-
-
-              <Button
-                variant="danger"
-                onClick={stopRecording}
-                disabled={
-                  status !== "Recording" ||
-                  loading
-                }
-              >
-                End Recording
-              </Button>
-
-            </div>
-
-          </DashboardCard>
-
-
-          {/* ========================================
-              STATUS
-          ======================================== */}
-
-          <DashboardCard title="Recording Status">
-
-            <div className="space-y-3">
-
-              <p className="text-zinc-300">
-
-                Status :
-
-                <span
-                  className={`ml-2 font-semibold ${
+                <Button
+                  onClick={startRecording}
+                  disabled={
+                    status === "Recording" ||
                     loading
-                      ? "text-amber-400"
-                      : status === "Recording"
-                      ? "text-red-400"
-                      : "text-emerald-400"
-                  }`}
+                  }
                 >
-                  {loading
-                    ? loadingStage
-                    : status}
-                </span>
-
-              </p>
+                  Start Recording
+                </Button>
 
 
-              <p className="text-5xl font-bold tracking-wider">
-                {formatTime()}
-              </p>
+                <Button
+                  variant="danger"
+                  onClick={stopRecording}
+                  disabled={
+                    status !== "Recording" ||
+                    loading
+                  }
+                >
+                  End Recording
+                </Button>
+
+              </div>
 
             </div>
 
           </DashboardCard>
+
+
+  {/* ========================================
+      RECORDING STATUS
+  ======================================== */}
+
+  <DashboardCard title="Recording Status">
+
+    <div className="space-y-6">
+
+      <p className="text-sm leading-6 text-slate-500">
+        View the current recording state and elapsed
+        meeting time.
+      </p>
+
+
+      <div>
+
+        <div className="flex items-center gap-2.5">
+
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${
+              loading
+                ? "bg-amber-500"
+                : status === "Recording"
+                ? "bg-red-500"
+                : "bg-emerald-500"
+            }`}
+          />
+
+
+          <span className="text-sm text-slate-500">
+            Status:
+          </span>
+
+
+          <span
+            className={`text-sm font-medium ${
+              loading
+                ? "text-amber-700"
+                : status === "Recording"
+                ? "text-red-600"
+                : "text-emerald-600"
+            }`}
+          >
+            {loading
+              ? loadingStage
+              : status}
+          </span>
 
         </div>
+
+
+        <p className="mt-5 text-4xl font-semibold tracking-[0.08em] text-slate-900">
+          {formatTime()}
+        </p>
+
+      </div>
+
+    </div>
+
+  </DashboardCard>
+
+</div>
 
 
         {/* ==========================================
@@ -610,9 +1113,10 @@ export default function Dashboard() {
 
           </DashboardCard>
 
-        )}
+                )}
 
       </main>
-    </>
+    </div>
+  </div>
   );
 }

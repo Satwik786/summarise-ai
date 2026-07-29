@@ -5,6 +5,7 @@ let mediaStream = null;
 let recordedChunks = [];
 let audioContext = null;
 let stopPollInterval = null;
+let heartbeatInterval = null;
 
 const statusElement =
   document.getElementById("status");
@@ -173,6 +174,13 @@ async function startRecording() {
         "BACKEND NOTIFIED RECORDING STARTED"
       );
 
+      await sendHeartbeat();
+
+      heartbeatInterval = setInterval(
+        sendHeartbeat,
+        5000
+      );
+
     } catch (error) {
 
       console.error(
@@ -181,6 +189,8 @@ async function startRecording() {
       );
 
     }
+
+    
 
 
     setStatus(
@@ -200,12 +210,48 @@ async function startRecording() {
       error
     );
 
+    if (heartbeatInterval) {
+
+    clearInterval(
+      heartbeatInterval
+    );
+
+    heartbeatInterval = null;
+
+  }
+
 
     setStatus(
       `Recording failed: ${error.message}`
     );
 
   }
+}
+
+async function sendHeartbeat() {
+
+  try {
+
+    await fetch(
+      "http://127.0.0.1:8000/bot/heartbeat",
+      {
+        method: "POST",
+      }
+    );
+
+    console.log(
+      "RECORDER HEARTBEAT SENT"
+    );
+
+  } catch (error) {
+
+    console.error(
+      "HEARTBEAT FAILED:",
+      error
+    );
+
+  }
+
 }
 
 // STOP RECORDING
@@ -241,6 +287,16 @@ function stopRecording() {
     );
 
     stopPollInterval = null;
+
+  }
+
+  if (heartbeatInterval) {
+
+    clearInterval(
+      heartbeatInterval
+    );
+
+    heartbeatInterval = null;
 
   }
 
@@ -387,6 +443,16 @@ async function uploadRecording() {
     );
 
   } finally {
+
+    if (heartbeatInterval) {
+
+      clearInterval(
+        heartbeatInterval
+      );
+
+      heartbeatInterval = null;
+
+    }
 
     recordedChunks = [];
 
