@@ -164,11 +164,11 @@ class BotService:
         print("CURRENT URL:", self.page.url)
 
         self.page.screenshot(
-            path="meet_debug.png",
+            path="meet_debug_after_login.png",
             full_page=True,
         )
 
-        print("SCREENSHOT SAVED")
+        print("SCREENSHOT SAVED AFTER LOGIN")
 
 
         
