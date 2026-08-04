@@ -79,6 +79,21 @@ class BotService:
             )
         )
 
+        print("PROFILE DIR:", self.profile_dir)
+
+        self.page = self.context.new_page()
+
+        self.page.goto("chrome://version")
+
+        self.page.wait_for_timeout(2000)
+
+        self.page.screenshot(
+            path="profile_check.png",
+            full_page=True,
+        )
+
+        raise RuntimeError("STOP AFTER PROFILE CHECK")
+
 
         
         # Find SummaRise extension service worker
