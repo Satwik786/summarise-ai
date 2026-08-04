@@ -161,6 +161,15 @@ class BotService:
             wait_until="domcontentloaded",
         )
 
+        print("CURRENT URL:", self.page.url)
+
+        self.page.screenshot(
+            path="meet_debug.png",
+            full_page=True,
+        )
+
+        print("SCREENSHOT SAVED")
+
 
         
         # Wait for pre-join screen
