@@ -158,7 +158,7 @@ async function startRecording() {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8000/bot/recording-started",
+        "http://13.126.92.49:8000/bot/recording-started",
         {
           method: "POST",
         }
@@ -233,7 +233,7 @@ async function sendHeartbeat() {
   try {
 
     await fetch(
-      "http://127.0.0.1:8000/bot/heartbeat",
+      "http://http://13.126.92.49:8000/bot/heartbeat",
       {
         method: "POST",
       }
@@ -380,7 +380,7 @@ async function uploadRecording() {
 
     const response =
       await fetch(
-        "http://127.0.0.1:8000/bot/recording",
+        "http://13.126.92.49:8000/bot/recording",
         {
           method: "POST",
           body: formData,
@@ -511,7 +511,7 @@ function startStopPolling() {
 
           const response =
             await fetch(
-              "http://127.0.0.1:8000/bot/stop-status"
+              "http://13.126.92.49:8000/bot/stop-status"
             );
 
 
