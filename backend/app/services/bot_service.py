@@ -170,32 +170,47 @@ class BotService:
 
         print("SCREENSHOT SAVED AFTER LOGIN")
 
+        # Handle first-time microphone permission screen
 
-        
+        try:
+            continue_without_mic = self.page.get_by_role(
+                "button",
+                name="Continue without microphone",
+            )
+
+            try:
+                continue_without_mic.first.wait_for(
+                    state="visible",
+                    timeout=5000,
+                )
+
+                print("FIRST-RUN MICROPHONE SCREEN DETECTED")
+
+                continue_without_mic.first.click()
+
+                print("CONTINUE WITHOUT MICROPHONE CLICKED")
+
+            except Exception:
+                print("NO FIRST-RUN MICROPHONE SCREEN")
+
+        except Exception:
+            pass
+
+
         # Wait for pre-join screen
-        
 
-        print("WAITING 30 SECONDS...")
-        self.page.wait_for_timeout(30000)
-
-        self.page.screenshot(
-            path="after_30_seconds.png",
-            full_page=True,
+        self.page.get_by_text(
+            "Ready to join?",
+            exact=True,
+        ).first.wait_for(
+            state="visible",
+            timeout=30000,
         )
 
-        print("TITLE:", self.page.title())
+        print("PRE-JOIN SCREEN FOUND")
 
-        print("URL:", self.page.url)
 
-        print("========== PAGE TEXT ==========")
-        print(self.page.locator("body").inner_text())
-        print("========== END ==========")
-
-        raise RuntimeError("DEBUG PAGE")
-
-        print(
-            "PRE-JOIN SCREEN FOUND"
-        )        
+              
 
         # Ensure microphone is off
 
