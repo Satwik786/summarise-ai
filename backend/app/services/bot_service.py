@@ -175,13 +175,25 @@ class BotService:
         # Wait for pre-join screen
         
 
-        self.page.get_by_text(
-            "Ready to join?",
-            exact=True,
-        ).first.wait_for(
-            state="visible",
-            timeout=30000,
+        print("WAITING 30 SECONDS...")
+        self.page.wait_for_timeout(30000)
+
+        print("URL AFTER WAIT:", self.page.url)
+
+        self.page.screenshot(
+            path="after_30_seconds.png",
+            full_page=True,
         )
+
+        print("PAGE TITLE:", self.page.title())
+
+        print("READY COUNT:",
+            self.page.get_by_text("Ready to join?").count())
+
+        print("SIGN IN COUNT:",
+            self.page.get_by_text("Sign in").count())
+
+        raise RuntimeError("STOP AFTER 30 SECONDS")
 
         print(
             "PRE-JOIN SCREEN FOUND"
