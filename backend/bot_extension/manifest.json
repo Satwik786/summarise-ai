@@ -11,7 +11,7 @@
   ],
 
   "host_permissions": [
-    "http://65.0.168.30:8000/*",
+    "http://65.2.59.35:8000/*",
     "https://meet.google.com/*"
   ],
 
