@@ -178,22 +178,20 @@ class BotService:
         print("WAITING 30 SECONDS...")
         self.page.wait_for_timeout(30000)
 
-        print("URL AFTER WAIT:", self.page.url)
-
         self.page.screenshot(
             path="after_30_seconds.png",
             full_page=True,
         )
 
-        print("PAGE TITLE:", self.page.title())
+        print("TITLE:", self.page.title())
 
-        print("READY COUNT:",
-            self.page.get_by_text("Ready to join?").count())
+        print("URL:", self.page.url)
 
-        print("SIGN IN COUNT:",
-            self.page.get_by_text("Sign in").count())
+        print("========== PAGE TEXT ==========")
+        print(self.page.locator("body").inner_text())
+        print("========== END ==========")
 
-        raise RuntimeError("STOP AFTER 30 SECONDS")
+        raise RuntimeError("DEBUG PAGE")
 
         print(
             "PRE-JOIN SCREEN FOUND"
