@@ -66,15 +66,3 @@ summarise-ai/
 ├── .gitignore
 ├── README.md
 ├── project-structure.txt
-└── project-tree.txt
-
-
-Historical recording workflow
-
-Saved Meetings
-
-July 28 — 9:12 PM
-July 28 — 8:56 PM
-July 27 — 
-
-and also to play the meeting audio just so that if the transcript is not proper , user can listen to the audio
