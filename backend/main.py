@@ -17,6 +17,7 @@ app.add_middleware(
     allow_origins=[
     "http://localhost:5173",
     "https://summarise-ai-umcg.vercel.app",
+    "https://summarise-ai-six.vercel.app",
 ],
     allow_credentials=True,
     allow_methods=["*"],
